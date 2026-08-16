@@ -1,8 +1,10 @@
 import '../database/dao/tarefa_dao.dart';
+import '../database/dao/execucao_dao.dart';
 import '../models/tarefa.dart';
 
 class TarefaRepository {
   final TarefaDao _tarefaDao = TarefaDao();
+  final ExecucaoDao _execucaoDao = ExecucaoDao();
 
   Future<List<Tarefa>> getTarefasAtivas() {
     return _tarefaDao.getAllAtivas();
@@ -28,7 +30,8 @@ class TarefaRepository {
     return _tarefaDao.toggleAtiva(id, ativa);
   }
 
-  Future<int> removerTarefa(int id) {
-    return _tarefaDao.delete(id);
+  Future<int> removerTarefa(int id) async {
+    await _execucaoDao.deleteByTarefaId(id);
+    return await _tarefaDao.delete(id);
   }
 }

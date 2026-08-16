@@ -1,6 +1,7 @@
 class Tarefa {
   final int? id;
-  final String descricao;
+  final int tarefaBaseId;
+  final String descricao; // Trazido pelo JOIN (leitura)
   final int diaSemana; // 1 (Mon) .. 7 (Sun)
   final int pessoaId;
   final int pontuacao; // Padrão 1
@@ -9,7 +10,8 @@ class Tarefa {
 
   Tarefa({
     this.id,
-    required this.descricao,
+    required this.tarefaBaseId,
+    this.descricao = '', // Pode vir vazio se não for um JOIN
     required this.diaSemana,
     required this.pessoaId,
     this.pontuacao = 1,
@@ -20,7 +22,7 @@ class Tarefa {
   Map<String, dynamic> toMap() {
     return {
       if (id != null) 'id': id,
-      'descricao': descricao,
+      'tarefa_base_id': tarefaBaseId,
       'dia_semana': diaSemana,
       'pessoa_id': pessoaId,
       'pontuacao': pontuacao,
@@ -32,7 +34,8 @@ class Tarefa {
   factory Tarefa.fromMap(Map<String, dynamic> map) {
     return Tarefa(
       id: map['id'] as int?,
-      descricao: map['descricao'] as String,
+      tarefaBaseId: map['tarefa_base_id'] as int,
+      descricao: map['descricao'] as String? ?? '',
       diaSemana: map['dia_semana'] as int,
       pessoaId: map['pessoa_id'] as int,
       pontuacao: map['pontuacao'] as int,
@@ -43,6 +46,7 @@ class Tarefa {
 
   Tarefa copyWith({
     int? id,
+    int? tarefaBaseId,
     String? descricao,
     int? diaSemana,
     int? pessoaId,
@@ -52,6 +56,7 @@ class Tarefa {
   }) {
     return Tarefa(
       id: id ?? this.id,
+      tarefaBaseId: tarefaBaseId ?? this.tarefaBaseId,
       descricao: descricao ?? this.descricao,
       diaSemana: diaSemana ?? this.diaSemana,
       pessoaId: pessoaId ?? this.pessoaId,

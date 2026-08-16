@@ -3,6 +3,7 @@ import '../models/execucao_tarefa.dart';
 import '../models/pessoa.dart';
 import '../database/dao/execucao_dao.dart';
 import '../repositories/pessoa_repository.dart';
+import '../repositories/tarefa_repository.dart';
 import '../services/gerador_semanal_service.dart';
 import '../services/pontuacao_service.dart';
 import '../services/fechamento_service.dart';
@@ -21,6 +22,7 @@ class PessoaExecucoesGroup {
 class ExecucaoProvider extends ChangeNotifier {
   final ExecucaoDao _execucaoDao = ExecucaoDao();
   final PessoaRepository _pessoaRepository = PessoaRepository();
+  final TarefaRepository _tarefaRepository = TarefaRepository();
   final GeradorSemanalService _geradorService = GeradorSemanalService();
   final PontuacaoService _pontuacaoService = PontuacaoService();
   final FechamentoService _fechamentoService = FechamentoService();
@@ -39,17 +41,21 @@ class ExecucaoProvider extends ChangeNotifier {
     _isLoading = true;
     notifyListeners();
 
-    // 1. Executa o fechamento diário de tarefas pendentes atrasadas
-    await _fechamentoService.processarFechamentoDiario();
+    try {
+      // 1. Executa o fechamento diário de tarefas pendentes atrasadas
+      await _fechamentoService.processarFechamentoDiario();
 
-    // 2. Garante a geração das tarefas da semana selecionada
-    await _geradorService.gerarExecucoesParaSemana(_dataSelecionada);
+      // 2. Garante a geração das tarefas da semana selecionada
+      await _geradorService.gerarExecucoesParaSemana(_dataSelecionada);
 
-    // 3. Carrega e agrupa as tarefas do dia selecionado
-    await _carregarExecucoesDoDia();
-
-    _isLoading = false;
-    notifyListeners();
+      // 3. Carrega e agrupa as tarefas do dia selecionado
+      await _carregarExecucoesDoDia();
+    } catch (e) {
+      debugPrint('Erro inicializarECarregar: \$e');
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
   }
 
   Future<void> selecionarData(DateTime novaData) async {
@@ -92,6 +98,15 @@ class ExecucaoProvider extends ChangeNotifier {
     return sucesso;
   }
 
+  Future<bool> desfazerConclusaoTarefa(int execucaoId) async {
+    final sucesso = await _pontuacaoService.desfazerConclusaoTarefa(execucaoId);
+    if (sucesso) {
+      await _carregarExecucoesDoDia();
+      notifyListeners();
+    }
+    return sucesso;
+  }
+
   Future<void> adicionarTarefaExtra({
     required int pessoaId,
     required String descricao,
@@ -103,5 +118,32 @@ class ExecucaoProvider extends ChangeNotifier {
     );
     await _carregarExecucoesDoDia();
     notifyListeners();
+  }
+
+  Future<void> removerTarefaExtra(int execucaoId) async {
+    final sucesso = await _pontuacaoService.removerTarefaExtra(execucaoId);
+    if (sucesso) {
+      await _carregarExecucoesDoDia();
+      notifyListeners();
+    }
+  }
+
+  /// Apaga a execução da semana e também remove o vínculo em Ajustes -> Tarefas e Vínculos
+  /// (a tarefa base máster em tarefas_base permanece salva no catálogo).
+  Future<bool> removerExecucaoTarefa(int execucaoId) async {
+    final exec = await _execucaoDao.getById(execucaoId);
+    if (exec != null) {
+      if (exec.tarefaId != null) {
+        // Apaga o vínculo da tabela `tarefas` (Ajustes -> Tarefas e Vínculos) e todas as suas execuções
+        await _tarefaRepository.removerTarefa(exec.tarefaId!);
+      } else {
+        // Se for tarefa extra (sem vínculo permanente), apaga apenas a execução
+        await _execucaoDao.delete(execucaoId);
+      }
+      await _carregarExecucoesDoDia();
+      notifyListeners();
+      return true;
+    }
+    return false;
   }
 }

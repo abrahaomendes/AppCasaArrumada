@@ -4,6 +4,7 @@ import '../../providers/pessoa_provider.dart';
 import '../../providers/execucao_provider.dart';
 import '../../models/pessoa.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/error_helper.dart';
 import 'pessoa_form_dialog.dart';
 
 class PessoasScreen extends StatefulWidget {
@@ -29,14 +30,38 @@ class _PessoasScreenState extends State<PessoasScreen> {
     );
 
     if (dados != null && mounted) {
-      final provider = context.read<PessoaProvider>();
-      await provider.adicionarOuAtualizarPessoa(
-        dados['nome'],
-        id: pessoa?.id,
-        avatar: dados['avatar'],
-      );
-      if (mounted) {
-        context.read<ExecucaoProvider>().inicializarECarregar();
+      try {
+        final provider = context.read<PessoaProvider>();
+        final ok = await provider.adicionarOuAtualizarPessoa(
+          dados['nome'],
+          id: pessoa?.id,
+          avatar: dados['avatar'],
+          pedidoSemana: dados['pedidoSemana'],
+        );
+
+        if (ok && mounted) {
+          context.read<ExecucaoProvider>().inicializarECarregar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text(
+                pessoa == null
+                    ? 'Pessoa "${dados['nome']}" cadastrada com sucesso!'
+                    : 'Dados de "${dados['nome']}" atualizados!',
+              ),
+              backgroundColor: AppColors.success,
+              duration: const Duration(seconds: 2),
+            ),
+          );
+        }
+      } catch (e, s) {
+        if (mounted) {
+          AppErrorHelper.exibirErro(
+            context,
+            'Erro ao salvar pessoa',
+            e,
+            stackTrace: s,
+          );
+        }
       }
     }
   }
@@ -58,12 +83,23 @@ class _PessoasScreenState extends State<PessoasScreen> {
             style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
             onPressed: () async {
               Navigator.pop(ctx);
-              await context.read<PessoaProvider>().removerPessoa(pessoa.id!);
-              if (mounted) {
-                context.read<ExecucaoProvider>().inicializarECarregar();
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text('Pessoa "${pessoa.nome}" removida.')),
-                );
+              try {
+                await context.read<PessoaProvider>().removerPessoa(pessoa.id!);
+                if (mounted) {
+                  context.read<ExecucaoProvider>().inicializarECarregar();
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    SnackBar(content: Text('Pessoa "${pessoa.nome}" removida.')),
+                  );
+                }
+              } catch (e, s) {
+                if (mounted) {
+                  AppErrorHelper.exibirErro(
+                    context,
+                    'Erro ao remover pessoa',
+                    e,
+                    stackTrace: s,
+                  );
+                }
               }
             },
             child: const Text('Excluir', style: TextStyle(color: Colors.white)),
@@ -112,20 +148,31 @@ class _PessoasScreenState extends State<PessoasScreen> {
                     final pessoa = provider.pessoas[index];
                     return Card(
                       child: ListTile(
-                        leading: CircleAvatar(
-                          backgroundColor: AppColors.primaryLight.withOpacity(0.3),
-                          child: pessoa.avatar != null && pessoa.avatar!.isNotEmpty
-                              ? Text(
-                                  pessoa.avatar!,
-                                  style: const TextStyle(fontSize: 24),
-                                )
-                              : Text(
-                                  pessoa.nome[0].toUpperCase(),
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    color: AppColors.primaryDark,
-                                  ),
-                                ),
+                        leading: Stack(
+                          clipBehavior: Clip.none,
+                          children: [
+                            CircleAvatar(
+                              backgroundColor: AppColors.primaryLight.withOpacity(0.3),
+                              child: pessoa.avatar != null && pessoa.avatar!.isNotEmpty
+                                  ? Text(
+                                      pessoa.avatar!,
+                                      style: const TextStyle(fontSize: 24),
+                                    )
+                                  : Text(
+                                      pessoa.nome[0].toUpperCase(),
+                                      style: const TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: AppColors.primaryDark,
+                                      ),
+                                    ),
+                            ),
+                            if (provider.vencedorSemanaAnteriorId == pessoa.id)
+                              const Positioned(
+                                top: -8,
+                                right: -8,
+                                child: Text('👑', style: TextStyle(fontSize: 18)),
+                              ),
+                          ],
                         ),
                         title: Text(
                           pessoa.nome,

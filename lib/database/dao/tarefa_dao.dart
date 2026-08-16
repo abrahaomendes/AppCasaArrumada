@@ -19,33 +19,37 @@ class TarefaDao {
 
   Future<List<Tarefa>> getAllAtivas() async {
     final db = await AppDatabase.instance;
-    final maps = await db.query(
-      'tarefas',
-      where: 'ativa = 1',
-      orderBy: 'dia_semana ASC, descricao ASC',
-    );
+    final maps = await db.rawQuery('''
+      SELECT t.*, tb.descricao 
+      FROM tarefas t
+      JOIN tarefas_base tb ON t.tarefa_base_id = tb.id
+      WHERE t.ativa = 1
+      ORDER BY t.dia_semana ASC, tb.descricao ASC
+    ''');
     return maps.map((map) => Tarefa.fromMap(map)).toList();
   }
 
   Future<List<Tarefa>> getByDiaSemana(int diaSemana) async {
     final db = await AppDatabase.instance;
-    final maps = await db.query(
-      'tarefas',
-      where: 'dia_semana = ? AND ativa = 1',
-      whereArgs: [diaSemana],
-      orderBy: 'descricao ASC',
-    );
+    final maps = await db.rawQuery('''
+      SELECT t.*, tb.descricao 
+      FROM tarefas t
+      JOIN tarefas_base tb ON t.tarefa_base_id = tb.id
+      WHERE t.dia_semana = ? AND t.ativa = 1
+      ORDER BY tb.descricao ASC
+    ''', [diaSemana]);
     return maps.map((map) => Tarefa.fromMap(map)).toList();
   }
 
   Future<List<Tarefa>> getByPessoa(int pessoaId) async {
     final db = await AppDatabase.instance;
-    final maps = await db.query(
-      'tarefas',
-      where: 'pessoa_id = ? AND ativa = 1',
-      whereArgs: [pessoaId],
-      orderBy: 'dia_semana ASC, descricao ASC',
-    );
+    final maps = await db.rawQuery('''
+      SELECT t.*, tb.descricao 
+      FROM tarefas t
+      JOIN tarefas_base tb ON t.tarefa_base_id = tb.id
+      WHERE t.pessoa_id = ? AND t.ativa = 1
+      ORDER BY t.dia_semana ASC, tb.descricao ASC
+    ''', [pessoaId]);
     return maps.map((map) => Tarefa.fromMap(map)).toList();
   }
 

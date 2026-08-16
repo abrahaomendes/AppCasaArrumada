@@ -49,6 +49,30 @@ class PontuacaoService {
     });
   }
 
+  Future<bool> desfazerConclusaoTarefa(int execucaoId) async {
+    final db = await AppDatabase.instance;
+
+    return await db.transaction((txn) async {
+      final execucao = await _execucaoDao.getById(execucaoId, txn: txn);
+      if (execucao == null || execucao.status != ExecucaoStatus.concluida) {
+        return false;
+      }
+
+      // 1. Remove evento de pontuação se houver
+      await _pontuacaoDao.deleteByExecucaoId(execucaoId, txn: txn);
+
+      // 2. Atualiza status de volta para PENDENTE e remove completed_at
+      await _execucaoDao.updateStatus(
+        execucaoId,
+        ExecucaoStatus.pendente,
+        null,
+        txn: txn,
+      );
+
+      return true;
+    });
+  }
+
   /// Adiciona uma Tarefa Extra (+2 pontos) criada diretamente como CONCLUIDA.
   Future<ExecucaoTarefa> adicionarTarefaExtra({
     required int pessoaId,
@@ -88,6 +112,19 @@ class PontuacaoService {
       await _pontuacaoDao.insert(eventoExtra, txn: txn);
 
       return novaExecucao.copyWith(id: idGerado);
+    });
+  }
+
+  /// Remove uma Tarefa Extra e seus pontos associados.
+  Future<bool> removerTarefaExtra(int execucaoId) async {
+    final execucao = await _execucaoDao.getById(execucaoId);
+    if (execucao == null || !execucao.isExtra) return false;
+
+    final db = await AppDatabase.instance;
+    return await db.transaction((txn) async {
+      await _execucaoDao.delete(execucaoId, txn: txn);
+      // Os pontos serão apagados automaticamente via ON DELETE CASCADE no banco de dados.
+      return true;
     });
   }
 }

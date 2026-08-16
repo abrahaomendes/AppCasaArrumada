@@ -74,4 +74,35 @@ class ExecucaoDao {
     ));
     return (count ?? 0) > 0;
   }
+
+  Future<int> delete(int id, {Transaction? txn}) async {
+    final db = txn ?? await AppDatabase.instance;
+    await db.delete(
+      'pontuacao_eventos',
+      where: 'execucao_tarefa_id = ?',
+      whereArgs: [id],
+    );
+    return await db.delete(
+      'execucoes_tarefas',
+      where: 'id = ?',
+      whereArgs: [id],
+    );
+  }
+
+  /// Remove todas as execuções (e eventos de pontuação associados) vinculadas a uma tarefa recorrente
+  Future<void> deleteByTarefaId(int tarefaId, {Transaction? txn}) async {
+    final db = txn ?? await AppDatabase.instance;
+    await db.execute('''
+      DELETE FROM pontuacao_eventos 
+      WHERE execucao_tarefa_id IN (
+        SELECT id FROM execucoes_tarefas WHERE tarefa_id = ?
+      )
+    ''', [tarefaId]);
+
+    await db.delete(
+      'execucoes_tarefas',
+      where: 'tarefa_id = ?',
+      whereArgs: [tarefaId],
+    );
+  }
 }

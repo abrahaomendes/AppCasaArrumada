@@ -14,6 +14,7 @@ class PessoaFormDialog extends StatefulWidget {
 class _PessoaFormDialogState extends State<PessoaFormDialog> {
   final _formKey = GlobalKey<FormState>();
   late TextEditingController _nomeController;
+  late TextEditingController _pedidoController;
   String? _avatarSelecionado;
 
   final List<String> _opcoesAvatares = [
@@ -27,13 +28,29 @@ class _PessoaFormDialogState extends State<PessoaFormDialog> {
     _nomeController = TextEditingController(
       text: widget.pessoaParaEditar?.nome ?? '',
     );
+    _pedidoController = TextEditingController(
+      text: widget.pessoaParaEditar?.pedidoSemana ?? '',
+    );
     _avatarSelecionado = widget.pessoaParaEditar?.avatar;
   }
 
   @override
   void dispose() {
     _nomeController.dispose();
+    _pedidoController.dispose();
     super.dispose();
+  }
+
+  void _submeterFormulario() {
+    if (_formKey.currentState!.validate()) {
+      Navigator.pop(context, {
+        'nome': _nomeController.text.trim(),
+        'pedidoSemana': _pedidoController.text.trim().isEmpty
+            ? null
+            : _pedidoController.text.trim(),
+        'avatar': _avatarSelecionado,
+      });
+    }
   }
 
   @override
@@ -54,6 +71,7 @@ class _PessoaFormDialogState extends State<PessoaFormDialog> {
                 controller: _nomeController,
                 autofocus: true,
                 textCapitalization: TextCapitalization.words,
+                textInputAction: TextInputAction.next,
                 decoration: InputDecoration(
                   labelText: 'Nome',
                   hintText: 'Ex: Abraão, Ana, João',
@@ -67,6 +85,20 @@ class _PessoaFormDialogState extends State<PessoaFormDialog> {
                   }
                   return null;
                 },
+              ),
+              const SizedBox(height: 16),
+              TextFormField(
+                controller: _pedidoController,
+                textCapitalization: TextCapitalization.sentences,
+                textInputAction: TextInputAction.done,
+                onFieldSubmitted: (_) => _submeterFormulario(),
+                decoration: InputDecoration(
+                  labelText: 'Pedido da Semana (Prêmio)',
+                  hintText: 'Ex: Pizza na sexta, Escolher o filme...',
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                ),
               ),
               const SizedBox(height: 20),
               const Text(
@@ -118,14 +150,7 @@ class _PessoaFormDialogState extends State<PessoaFormDialog> {
               style: TextStyle(color: AppColors.textSecondary)),
         ),
         ElevatedButton(
-          onPressed: () {
-            if (_formKey.currentState!.validate()) {
-              Navigator.pop(context, {
-                'nome': _nomeController.text.trim(),
-                'avatar': _avatarSelecionado,
-              });
-            }
-          },
+          onPressed: _submeterFormulario,
           child: Text(isEditing ? 'Salvar' : 'Adicionar'),
         ),
       ],

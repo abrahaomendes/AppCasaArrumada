@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../../models/tarefa.dart';
+import '../../models/tarefa_base.dart';
 import '../../models/pessoa.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/date_utils.dart';
@@ -7,11 +8,13 @@ import '../../core/utils/date_utils.dart';
 class TarefaFormDialog extends StatefulWidget {
   final Tarefa? tarefaParaEditar;
   final List<Pessoa> pessoas;
+  final List<TarefaBase> tarefasBase;
 
   const TarefaFormDialog({
     super.key,
     this.tarefaParaEditar,
     required this.pessoas,
+    required this.tarefasBase,
   });
 
   @override
@@ -20,16 +23,18 @@ class TarefaFormDialog extends StatefulWidget {
 
 class _TarefaFormDialogState extends State<TarefaFormDialog> {
   final _formKey = GlobalKey<FormState>();
-  late TextEditingController _descricaoController;
+  int? _tarefaBaseIdSelecionada;
   int _diaSemanaSelecionado = 1; // 1 = Segunda
   int? _pessoaIdSelecionada;
 
   @override
   void initState() {
     super.initState();
-    _descricaoController = TextEditingController(
-      text: widget.tarefaParaEditar?.descricao ?? '',
-    );
+    if (widget.tarefaParaEditar != null) {
+      _tarefaBaseIdSelecionada = widget.tarefaParaEditar!.tarefaBaseId;
+    } else if (widget.tarefasBase.isNotEmpty) {
+      _tarefaBaseIdSelecionada = widget.tarefasBase.first.id;
+    }
     _diaSemanaSelecionado = widget.tarefaParaEditar?.diaSemana ?? DateTime.now().weekday;
     if (widget.pessoas.isNotEmpty) {
       if (widget.tarefaParaEditar != null) {
@@ -42,7 +47,6 @@ class _TarefaFormDialogState extends State<TarefaFormDialog> {
 
   @override
   void dispose() {
-    _descricaoController.dispose();
     super.dispose();
   }
 
@@ -60,21 +64,30 @@ class _TarefaFormDialogState extends State<TarefaFormDialog> {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              const Text('Descrição:', style: TextStyle(fontWeight: FontWeight.bold)),
+              const Text('Tarefa:', style: TextStyle(fontWeight: FontWeight.bold)),
               const SizedBox(height: 6),
-              TextFormField(
-                controller: _descricaoController,
-                autofocus: true,
+              DropdownButtonFormField<int>(
+                value: _tarefaBaseIdSelecionada,
                 decoration: InputDecoration(
-                  hintText: 'Ex: Tirar o lixo, Lavar a louça',
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
                   ),
                 ),
-                validator: (text) {
-                  if (text == null || text.trim().isEmpty) {
-                    return 'Informe a descrição';
-                  }
+                items: widget.tarefasBase.map((tb) {
+                  return DropdownMenuItem<int>(
+                    value: tb.id,
+                    child: Text(tb.descricao),
+                  );
+                }).toList(),
+                onChanged: widget.tarefasBase.isEmpty
+                    ? null
+                    : (val) {
+                        setState(() {
+                          _tarefaBaseIdSelecionada = val;
+                        });
+                      },
+                validator: (val) {
+                  if (val == null) return 'Selecione uma tarefa base';
                   return null;
                 },
               ),
@@ -156,9 +169,9 @@ class _TarefaFormDialogState extends State<TarefaFormDialog> {
         ),
         ElevatedButton(
           onPressed: () {
-            if (_formKey.currentState!.validate() && _pessoaIdSelecionada != null) {
-              Navigator.pop(context, {
-                'descricao': _descricaoController.text.trim(),
+            if (_formKey.currentState!.validate()) {
+              Navigator.of(context).pop({
+                'tarefaBaseId': _tarefaBaseIdSelecionada,
                 'diaSemana': _diaSemanaSelecionado,
                 'pessoaId': _pessoaIdSelecionada,
               });

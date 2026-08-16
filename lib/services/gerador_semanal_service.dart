@@ -9,11 +9,17 @@ class GeradorSemanalService {
   final ExecucaoDao _execucaoDao = ExecucaoDao();
 
   /// Garante que todas as tarefas recorrentes ativas para a semana a qual a `dataReferencia` pertence
-  /// tenham sido instanciadas na tabela `execucoes_tarefas`.
+  /// (e também para a próxima semana) tenham sido instanciadas na tabela `execucoes_tarefas`.
   Future<void> gerarExecucoesParaSemana(DateTime dataReferencia) async {
     final diasSemana = AppDateUtils.getWeekDays(dataReferencia);
 
     for (final dia in diasSemana) {
+      await gerarExecucoesParaDia(dia);
+    }
+
+    // Pré-gera a semana seguinte para manter a continuidade automática das tarefas
+    final proximaSemana = AppDateUtils.getWeekDays(dataReferencia.add(const Duration(days: 7)));
+    for (final dia in proximaSemana) {
       await gerarExecucoesParaDia(dia);
     }
   }
@@ -27,11 +33,18 @@ class GeradorSemanalService {
     final tarefasRecorrentes = await _tarefaDao.getByDiaSemana(diaSemanaIso);
 
     for (final tarefa in tarefasRecorrentes) {
-      // Evita gerar execução no passado para tarefas recém criadas,
-      // pois senão o FechamentoService já daria ponto negativo no mesmo dia.
-      final dataCriacaoTarefaIso = tarefa.createdAt.substring(0, 10); // Pega apenas a parte YYYY-MM-DD
-      if (dataIso.compareTo(dataCriacaoTarefaIso) < 0) {
-        continue; // A data de geração é anterior à data em que a tarefa foi criada
+      // Verifica a semana de criação da tarefa
+      final dataCriacao = DateTime.tryParse(tarefa.createdAt) ?? DateTime.now();
+      final semanaCriacao = WeekCalculator.getAppWeek(dataCriacao);
+
+      // Permite a geração se a data for na mesma semana da criação ou em semanas posteriores
+      final bool pertenceASemanaAtualOuFutura =
+          (appWeek.year > semanaCriacao.year) ||
+          (appWeek.year == semanaCriacao.year && appWeek.week >= semanaCriacao.week) ||
+          (dataIso.compareTo(tarefa.createdAt.substring(0, 10)) >= 0);
+
+      if (!pertenceASemanaAtualOuFutura) {
+        continue;
       }
 
       final jaExiste = await _execucaoDao.existeExecucaoParaTarefaEData(

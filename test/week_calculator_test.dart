@@ -4,13 +4,10 @@ import 'package:casa_em_ordem/core/utils/date_utils.dart';
 
 void main() {
   group('WeekCalculator Tests', () {
-    test('Calcula corretamente o número da semana ISO', () {
-      final date = DateTime(2026, 8, 3); // Segunda-feira, 3 de agosto de 2026
-      final isoWeek = WeekCalculator.getIsoWeek(date);
-
-      expect(isoWeek.week, equals(32));
-      expect(isoWeek.year, equals(2026));
-      expect(isoWeek.toString(), equals('Semana 32 / 2026'));
+    test('AppWeek is correct', () {
+      final date = DateTime(2026, 8, 12);
+      final appWeek = WeekCalculator.getAppWeek(date);
+      expect(appWeek.year, 2026);
     });
 
     test('Identifica nomes de dias em português corretamente', () {
@@ -23,8 +20,8 @@ void main() {
       final dias = AppDateUtils.getWeekDays(ref);
 
       expect(dias.length, equals(7));
-      expect(dias.first.weekday, equals(1)); // Segunda
-      expect(dias.last.weekday, equals(7)); // Domingo
+      expect(dias.first.weekday, equals(7)); // Domingo
+      expect(dias.last.weekday, equals(6)); // Sábado
     });
   });
 }

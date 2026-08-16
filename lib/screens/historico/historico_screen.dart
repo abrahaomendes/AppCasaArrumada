@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/ranking_provider.dart';
 import '../../core/constants/app_colors.dart';
+import '../../core/utils/week_calculator.dart';
 import '../pessoa_detalhe/pessoa_detalhe_screen.dart';
 
 class HistoricoScreen extends StatefulWidget {
@@ -25,6 +26,10 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
     final rProvider = context.watch<RankingProvider>();
     final semanaStr = rProvider.semanaSelecionada.toString();
     final ranking = rProvider.ranking;
+    
+    final semanaAtual = WeekCalculator.getAppWeek(DateTime.now());
+    final isSemanaPassada = rProvider.semanaSelecionada.year < semanaAtual.year || 
+        (rProvider.semanaSelecionada.year == semanaAtual.year && rProvider.semanaSelecionada.week < semanaAtual.week);
 
     return Scaffold(
       appBar: AppBar(
@@ -93,43 +98,74 @@ class _HistoricoScreenState extends State<HistoricoScreen> {
                                 border: Border.all(
                                     color: AppColors.gold, width: 1.5),
                               ),
-                              child: Row(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
-                                  const Text('🏆',
-                                      style: TextStyle(fontSize: 36)),
-                                  const SizedBox(width: 14),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        const Text(
-                                          'Vencedor da Semana',
-                                          style: TextStyle(
-                                            fontSize: 12,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.bronze,
-                                          ),
+                                  Row(
+                                    children: [
+                                      const Text('🏆',
+                                          style: TextStyle(fontSize: 36)),
+                                      const SizedBox(width: 14),
+                                      Expanded(
+                                        child: Column(
+                                          crossAxisAlignment:
+                                              CrossAxisAlignment.start,
+                                          children: [
+                                            const Text(
+                                              'Vencedor da Semana',
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.bronze,
+                                              ),
+                                            ),
+                                            Text(
+                                              ranking.first.nomePessoa,
+                                              style: const TextStyle(
+                                                fontSize: 20,
+                                                fontWeight: FontWeight.bold,
+                                                color: AppColors.textPrimary,
+                                              ),
+                                            ),
+                                          ],
                                         ),
-                                        Text(
-                                          ranking.first.nomePessoa,
-                                          style: const TextStyle(
-                                            fontSize: 20,
-                                            fontWeight: FontWeight.bold,
-                                            color: AppColors.textPrimary,
-                                          ),
+                                      ),
+                                      Text(
+                                        '${ranking.first.totalPontos} pts',
+                                        style: const TextStyle(
+                                          fontSize: 18,
+                                          fontWeight: FontWeight.bold,
+                                          color: AppColors.gold,
                                         ),
-                                      ],
-                                    ),
+                                      ),
+                                    ],
                                   ),
-                                  Text(
-                                    '${ranking.first.totalPontos} pts',
-                                    style: const TextStyle(
-                                      fontSize: 18,
-                                      fontWeight: FontWeight.bold,
-                                      color: AppColors.gold,
+                                  if (isSemanaPassada && ranking.first.pedidoSemana != null) ...[
+                                    const SizedBox(height: 12),
+                                    Container(
+                                      padding: const EdgeInsets.all(12),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withOpacity(0.6),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Row(
+                                        children: [
+                                          const Icon(Icons.star_rounded, color: AppColors.gold, size: 20),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Text(
+                                              'Pedido: ${ranking.first.pedidoSemana}',
+                                              style: const TextStyle(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w600,
+                                                color: AppColors.textPrimary,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ),
                                     ),
-                                  ),
+                                  ],
                                 ],
                               ),
                             ),

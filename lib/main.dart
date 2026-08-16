@@ -1,8 +1,7 @@
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:sqflite/sqflite.dart';
-import 'package:sqflite_common_ffi_web/sqflite_ffi_web.dart';
+import 'core/utils/database_setup.dart' if (dart.library.html) 'core/utils/database_setup_web.dart';
 import 'core/theme/app_theme.dart';
 import 'providers/pessoa_provider.dart';
 import 'providers/tarefa_provider.dart';
@@ -12,16 +11,12 @@ import 'screens/home/home_screen.dart';
 import 'screens/ranking/ranking_screen.dart';
 import 'screens/historico/historico_screen.dart';
 import 'screens/configuracoes/configuracoes_screen.dart';
+import 'screens/tarefas/tarefas_base_screen.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  if (kIsWeb) {
-    // Na web, usa SQLite na thread principal (sem necessidade de COOP/COEP headers)
-    databaseFactory = databaseFactoryFfiWebNoWebWorker;
-  }
-  // No mobile (Android/iOS), o sqflite funciona nativamente sem config adicional.
-  // No desktop, inicialização FFI pode ser adicionada aqui se necessário.
+  setupDatabase();
 
   runApp(const CasaEmOrdemApp());
 }
@@ -42,7 +37,11 @@ class CasaEmOrdemApp extends StatelessWidget {
         title: 'Casa em Ordem',
         debugShowCheckedModeBanner: false,
         theme: AppTheme.lightTheme,
-        home: const MainNavigationScreen(),
+        initialRoute: '/',
+        routes: {
+          '/': (context) => const MainNavigationScreen(),
+          '/tarefas-base': (context) => const TarefasBaseScreen(),
+        },
       ),
     );
   }

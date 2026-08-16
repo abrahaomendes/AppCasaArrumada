@@ -7,6 +7,7 @@ import '../../models/tarefa.dart';
 import '../../models/pessoa.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/date_utils.dart';
+import '../../core/utils/error_helper.dart';
 import 'tarefa_form_dialog.dart';
 
 class TarefasScreen extends StatefulWidget {
@@ -39,28 +40,52 @@ class _TarefasScreenState extends State<TarefasScreen> {
       return;
     }
 
+    final tarefasBase = context.read<TarefaProvider>().tarefasBase;
+
+    if (tarefasBase.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Cadastre pelo menos uma Tarefa na engrenagem antes de criar vínculos.'),
+          backgroundColor: AppColors.danger,
+        ),
+      );
+      return;
+    }
+
     final dados = await showDialog<Map<String, dynamic>>(
       context: context,
       builder: (ctx) => TarefaFormDialog(
         tarefaParaEditar: tarefa,
         pessoas: pessoas,
+        tarefasBase: tarefasBase,
       ),
     );
 
     if (dados != null && mounted) {
       final provider = context.read<TarefaProvider>();
-      await provider.salvarTarefa(
-        id: tarefa?.id,
-        descricao: dados['descricao'],
-        diaSemana: dados['diaSemana'],
-        pessoaId: dados['pessoaId'],
-      );
-
-      if (mounted) {
-        context.read<ExecucaoProvider>().inicializarECarregar();
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Tarefa recorrente salva com sucesso!')),
+      try {
+        await provider.salvarTarefa(
+          id: tarefa?.id,
+          tarefaBaseId: dados['tarefaBaseId'],
+          diaSemana: dados['diaSemana'],
+          pessoaId: dados['pessoaId'],
         );
+
+        if (mounted) {
+          context.read<ExecucaoProvider>().inicializarECarregar();
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Vínculo salvo com sucesso!')),
+          );
+        }
+      } catch (e, s) {
+        if (mounted) {
+          AppErrorHelper.exibirErro(
+            context,
+            'Erro ao salvar vínculo de tarefa',
+            e,
+            stackTrace: s,
+          );
+        }
       }
     }
   }
@@ -76,7 +101,16 @@ class _TarefasScreenState extends State<TarefasScreen> {
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Tarefas Recorrentes'),
+        title: const Text('Tarefas e Vínculos'),
+        actions: [
+          IconButton(
+            icon: const Icon(Icons.settings),
+            tooltip: 'Gerenciar Tarefas',
+            onPressed: () {
+              Navigator.pushNamed(context, '/tarefas-base');
+            },
+          ),
+        ],
       ),
       body: tProvider.isLoading
           ? const Center(child: CircularProgressIndicator())
@@ -139,9 +173,20 @@ class _TarefasScreenState extends State<TarefasScreen> {
                               icon: const Icon(Icons.delete_outline,
                                   color: AppColors.danger),
                               onPressed: () async {
-                                await tProvider.desativarOuRemoverTarefa(tarefa.id!);
-                                if (mounted) {
-                                  context.read<ExecucaoProvider>().inicializarECarregar();
+                                try {
+                                  await tProvider.desativarOuRemoverTarefa(tarefa.id!);
+                                  if (mounted) {
+                                    context.read<ExecucaoProvider>().inicializarECarregar();
+                                  }
+                                } catch (e, s) {
+                                  if (mounted) {
+                                    AppErrorHelper.exibirErro(
+                                      context,
+                                      'Erro ao remover tarefa',
+                                      e,
+                                      stackTrace: s,
+                                    );
+                                  }
                                 }
                               },
                             ),

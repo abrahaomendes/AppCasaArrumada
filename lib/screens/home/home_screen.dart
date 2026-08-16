@@ -1,9 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import '../../models/execucao_tarefa.dart';
 import '../../providers/execucao_provider.dart';
 import '../../providers/pessoa_provider.dart';
+import '../../providers/tarefa_provider.dart';
 import '../../core/constants/app_colors.dart';
 import '../../core/utils/date_utils.dart';
+import '../../core/utils/error_helper.dart';
 import '../../widgets/tarefa_card.dart';
 import 'widgets/dia_selector.dart';
 import 'widgets/add_extra_dialog.dart';
@@ -43,19 +46,79 @@ class _HomeScreenState extends State<HomeScreen> {
       context: context,
       builder: (ctx) => AddExtraDialog(
         pessoas: pessoas,
-        onSalvar: (pessoaId, descricao) {
-          context.read<ExecucaoProvider>().adicionarTarefaExtra(
-                pessoaId: pessoaId,
-                descricao: descricao,
+        onSalvar: (pessoaId, descricao) async {
+          try {
+            await context.read<ExecucaoProvider>().adicionarTarefaExtra(
+                  pessoaId: pessoaId,
+                  descricao: descricao,
+                );
+            if (context.mounted) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(
+                  content: Text('⭐ Tarefa extra adicionada com +2 pontos!'),
+                  backgroundColor: AppColors.success,
+                  duration: Duration(seconds: 2),
+                ),
               );
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('⭐ Tarefa extra adicionada com +2 pontos!'),
-              backgroundColor: AppColors.success,
-              duration: Duration(seconds: 2),
-            ),
-          );
+            }
+          } catch (e, s) {
+            if (context.mounted) {
+              AppErrorHelper.exibirErro(
+                context,
+                'Erro ao adicionar tarefa extra',
+                e,
+                stackTrace: s,
+              );
+            }
+          }
         },
+      ),
+    );
+  }
+
+  void _confirmarExclusaoExecucao(BuildContext context, ExecucaoTarefa exec, ExecucaoProvider execProvider) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Excluir da Semana?'),
+        content: Text(
+          'Deseja remover "${exec.descricao}" deste dia/semana?\n\n'
+          'Esta ação também removerá o vínculo em "Ajustes -> Tarefas e Vínculos". '
+          'A tarefa base continuará salva em "Tarefas da Casa".',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: const Text('Cancelar'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: AppColors.danger),
+            onPressed: () async {
+              Navigator.pop(ctx);
+              try {
+                if (exec.id != null) {
+                  await execProvider.removerExecucaoTarefa(exec.id!);
+                  if (mounted) {
+                    context.read<TarefaProvider>().carregarTarefas();
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: Text('Tarefa "${exec.descricao}" removida da semana e dos vínculos.')),
+                    );
+                  }
+                }
+              } catch (e, s) {
+                if (mounted) {
+                  AppErrorHelper.exibirErro(
+                    context,
+                    'Erro ao apagar tarefa da semana',
+                    e,
+                    stackTrace: s,
+                  );
+                }
+              }
+            },
+            child: const Text('Excluir', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }
@@ -91,6 +154,47 @@ class _HomeScreenState extends State<HomeScreen> {
           ],
         ),
         actions: [
+          IconButton(
+            icon: const Icon(Icons.chevron_left_rounded, color: AppColors.primary, size: 28),
+            tooltip: 'Semana Anterior',
+            onPressed: () {
+              execProvider.selecionarData(data.subtract(const Duration(days: 7)));
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.chevron_right_rounded, color: AppColors.primary, size: 28),
+            tooltip: 'Próxima Semana',
+            onPressed: () {
+              execProvider.selecionarData(data.add(const Duration(days: 7)));
+            },
+          ),
+          IconButton(
+            icon: const Icon(Icons.calendar_month_rounded, color: AppColors.textSecondary),
+            tooltip: 'Escolher Data',
+            onPressed: () async {
+              final dataEscolhida = await showDatePicker(
+                context: context,
+                initialDate: data,
+                firstDate: DateTime(2020),
+                lastDate: DateTime(2030),
+                builder: (context, child) {
+                  return Theme(
+                    data: Theme.of(context).copyWith(
+                      colorScheme: const ColorScheme.light(
+                        primary: AppColors.primary,
+                        onPrimary: Colors.white,
+                        onSurface: AppColors.textPrimary,
+                      ),
+                    ),
+                    child: child!,
+                  );
+                },
+              );
+              if (dataEscolhida != null) {
+                execProvider.selecionarData(dataEscolhida);
+              }
+            },
+          ),
           IconButton(
             icon: const Icon(Icons.today_rounded, color: AppColors.primary),
             tooltip: 'Ir para Hoje',
@@ -163,24 +267,35 @@ class _HomeScreenState extends State<HomeScreen> {
             padding: const EdgeInsets.symmetric(vertical: 4, horizontal: 2),
             child: Row(
               children: [
-                CircleAvatar(
-                  radius: 14,
-                  backgroundColor: AppColors.primaryLight.withOpacity(0.3),
-                  child: grupo.pessoa.avatar != null && grupo.pessoa.avatar!.isNotEmpty
-                      ? Text(
-                          grupo.pessoa.avatar!,
-                          style: const TextStyle(fontSize: 16),
-                        )
-                      : Text(
-                          grupo.pessoa.nome.isNotEmpty
-                              ? grupo.pessoa.nome[0].toUpperCase()
-                              : '?',
-                          style: const TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: AppColors.primaryDark,
-                          ),
-                        ),
+                Stack(
+                  clipBehavior: Clip.none,
+                  children: [
+                    CircleAvatar(
+                      radius: 14,
+                      backgroundColor: AppColors.primaryLight.withOpacity(0.3),
+                      child: grupo.pessoa.avatar != null && grupo.pessoa.avatar!.isNotEmpty
+                          ? Text(
+                              grupo.pessoa.avatar!,
+                              style: const TextStyle(fontSize: 16),
+                            )
+                          : Text(
+                              grupo.pessoa.nome.isNotEmpty
+                                  ? grupo.pessoa.nome[0].toUpperCase()
+                                  : '?',
+                              style: const TextStyle(
+                                fontSize: 12,
+                                fontWeight: FontWeight.bold,
+                                color: AppColors.primaryDark,
+                              ),
+                            ),
+                    ),
+                    if (context.read<PessoaProvider>().vencedorSemanaAnteriorId == grupo.pessoa.id)
+                      const Positioned(
+                        top: -6,
+                        right: -6,
+                        child: Text('👑', style: TextStyle(fontSize: 14)),
+                      ),
+                  ],
                 ),
                 const SizedBox(width: 8),
                 Text(
@@ -212,16 +327,70 @@ class _HomeScreenState extends State<HomeScreen> {
                 execucao: exec,
                 onConcluir: () async {
                   if (exec.id != null && exec.status == 'PENDENTE') {
-                    final ok = await execProvider.concluirTarefa(exec.id!);
-                    if (ok && mounted) {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('🙂 +1 Ponto registrado com sucesso!'),
-                          backgroundColor: AppColors.success,
-                          duration: Duration(seconds: 1),
-                        ),
+                    try {
+                      final ok = await execProvider.concluirTarefa(exec.id!);
+                      if (ok && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('🙂 +1 Ponto registrado com sucesso!'),
+                            backgroundColor: AppColors.success,
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      }
+                    } catch (e, s) {
+                      if (mounted) {
+                        AppErrorHelper.exibirErro(
+                          context,
+                          'Erro ao concluir tarefa',
+                          e,
+                          stackTrace: s,
+                        );
+                      }
+                    }
+                  }
+                },
+                onDesfazer: () async {
+                  if (exec.id == null) return;
+                  
+                  try {
+                    if (exec.isExtra) {
+                      await execProvider.removerTarefaExtra(exec.id!);
+                      if (mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('🗑️ Tarefa extra removida.'),
+                            backgroundColor: AppColors.textSecondary,
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      }
+                    } else if (exec.status == 'CONCLUIDA') {
+                      final ok = await execProvider.desfazerConclusaoTarefa(exec.id!);
+                      if (ok && mounted) {
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          const SnackBar(
+                            content: Text('↩️ Conclusão desfeita.'),
+                            backgroundColor: AppColors.warning,
+                            duration: Duration(seconds: 1),
+                          ),
+                        );
+                      }
+                    }
+                  } catch (e, s) {
+                    if (mounted) {
+                      AppErrorHelper.exibirErro(
+                        context,
+                        'Erro ao desfazer ação',
+                        e,
+                        stackTrace: s,
                       );
                     }
+                  }
+                },
+                onExcluir: () {
+                  if (exec.id != null) {
+                    _confirmarExclusaoExecucao(context, exec, execProvider);
                   }
                 },
               );

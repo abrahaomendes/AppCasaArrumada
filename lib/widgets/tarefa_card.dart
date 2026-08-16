@@ -5,11 +5,15 @@ import '../core/constants/app_colors.dart';
 class TarefaCard extends StatelessWidget {
   final ExecucaoTarefa execucao;
   final VoidCallback? onConcluir;
+  final VoidCallback? onDesfazer;
+  final VoidCallback? onExcluir;
 
   const TarefaCard({
     super.key,
     required this.execucao,
     this.onConcluir,
+    this.onDesfazer,
+    this.onExcluir,
   });
 
   @override
@@ -54,20 +58,31 @@ class TarefaCard extends StatelessWidget {
               color: AppColors.textPrimary,
             ),
           ),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.background,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Text(
-              'Pendente',
-              style: TextStyle(
-                fontSize: 12,
-                fontWeight: FontWeight.w500,
-                color: AppColors.textSecondary,
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.background,
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Text(
+                  'Pendente',
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w500,
+                    color: AppColors.textSecondary,
+                  ),
+                ),
               ),
-            ),
+              if (onExcluir != null)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.danger),
+                  tooltip: 'Apagar da semana',
+                  onPressed: onExcluir,
+                ),
+            ],
           ),
           onTap: onConcluir,
         ),
@@ -86,11 +101,15 @@ class TarefaCard extends StatelessWidget {
       child: Material(
         color: Colors.transparent,
         child: ListTile(
+          onTap: onDesfazer,
           contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
-          leading: const Icon(
-            Icons.check_circle_rounded,
-            size: 28,
-            color: AppColors.success,
+          leading: IconButton(
+            icon: const Icon(
+              Icons.check_circle_rounded,
+              size: 28,
+              color: AppColors.success,
+            ),
+            onPressed: onDesfazer,
           ),
           title: Text(
             execucao.descricao,
@@ -101,26 +120,37 @@ class TarefaCard extends StatelessWidget {
               decoration: TextDecoration.lineThrough,
             ),
           ),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.success,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('🙂 ', style: TextStyle(fontSize: 14)),
-                Text(
-                  '+1',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.success,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
-            ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('🙂 ', style: TextStyle(fontSize: 14)),
+                    Text(
+                      '+1',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (onExcluir != null)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.danger),
+                  tooltip: 'Apagar da semana',
+                  onPressed: onExcluir,
+                ),
+            ],
           ),
         ),
       ),
@@ -153,26 +183,37 @@ class TarefaCard extends StatelessWidget {
               decoration: TextDecoration.lineThrough,
             ),
           ),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.danger,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('☹️ ', style: TextStyle(fontSize: 14)),
-                Text(
-                  '-1',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.danger,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
-            ),
+                child: const Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text('☹️ ', style: TextStyle(fontSize: 14)),
+                    Text(
+                      '-1',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              if (onExcluir != null)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.danger),
+                  tooltip: 'Apagar da semana',
+                  onPressed: onExcluir,
+                ),
+            ],
           ),
         ),
       ),
@@ -225,26 +266,44 @@ class TarefaCard extends StatelessWidget {
               ),
             ],
           ),
-          trailing: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppColors.warning,
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text('🙂 ', style: TextStyle(fontSize: 14)),
-                Text(
-                  '+2',
-                  style: TextStyle(
-                    fontSize: 13,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                decoration: BoxDecoration(
+                  color: AppColors.warning,
+                  borderRadius: BorderRadius.circular(8),
                 ),
-              ],
-            ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const Text('🙂 ', style: TextStyle(fontSize: 14)),
+                    const Text(
+                      '+2',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.white,
+                      ),
+                    ),
+                    if (onDesfazer != null) ...[
+                      const SizedBox(width: 4),
+                      InkWell(
+                        onTap: onDesfazer,
+                        child: const Icon(Icons.close_rounded, color: Colors.white, size: 20),
+                      ),
+                    ]
+                  ],
+                ),
+              ),
+              if (onExcluir != null)
+                IconButton(
+                  icon: const Icon(Icons.delete_outline_rounded, size: 20, color: AppColors.danger),
+                  tooltip: 'Apagar da semana',
+                  onPressed: onExcluir,
+                ),
+            ],
           ),
         ),
       ),
